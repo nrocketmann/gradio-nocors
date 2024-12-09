@@ -30,7 +30,19 @@ let maybeWorkerProxy: WorkerProxy | undefined;
 export async function resolve_wasm_src(src: MediaSrc): Promise<MediaSrc> {
 	const is_browser = typeof window !== "undefined";
 	if (src == null || !is_browser || !should_proxy_wasm_src(src)) {
-		return src;
+		try {
+			// Add no-cors mode when fetching directly
+			const response = await fetch(src as string, { mode: "no-cors" });
+			if (!response.ok) {
+				throw new Error(`Failed to fetch the resource from ${src}`);
+			}
+			// Generate a blob URL to ensure compatibility with existing logic
+			const blob = await response.blob();
+			return URL.createObjectURL(blob);
+		} catch (error) {
+			console.error("Error resolving wasm src:", error);
+			return src;
+		}
 	}
 
 	if (maybeWorkerProxy == null) {
